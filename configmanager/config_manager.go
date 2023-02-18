@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Entry is an SSH configuration entry
@@ -40,7 +41,6 @@ func NewManager(dir string) *manager {
 }
 
 func (m *manager) GetConfiguration(entryName string) (Entry, error) { return Entry{}, nil }
-func (m *manager) GetConfigurations() ([]Entry, error)              { return []Entry{}, nil }
 func (m *manager) RemoveConfiguration(entryName string) error       { return nil }
 
 func (m *manager) AddConfiguration(entry Entry) error {
@@ -55,10 +55,38 @@ func (m *manager) AddConfiguration(entry Entry) error {
 	if err != nil {
 		return fmt.Errorf("couldn't marshal entry %v to JSON: %v", entry, err)
 	}
-	filename := filepath.Join(m.dir, entry.Name)
+	filename := filepath.Join(m.dir, entry.Name+".json")
 	err = ioutil.WriteFile(filename, file, 0644)
 	if err != nil {
 		return fmt.Errorf("couldn't write file %s: %v", filename, err)
 	}
 	return nil
+}
+
+func (m *manager) GetConfigurations() ([]Entry, error) {
+
+	entries := make([]Entry, 0)
+	files, err := ioutil.ReadDir(m.dir)
+	if err != nil {
+		return entries, fmt.Errorf("couln't read directory %s: %v", m.dir, err)
+	}
+
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".json") {
+			continue
+		}
+
+		byteValue, err := ioutil.ReadFile(filepath.Join(m.dir, file.Name()))
+		if err != nil {
+			return entries, fmt.Errorf("couln't read file %s: %v", file.Name(), err)
+		}
+
+		var entry Entry
+		if err := json.Unmarshal(byteValue, &entry); err != nil {
+			return []Entry{}, fmt.Errorf("couln't parse JSON file %s: %v", file.Name(), err)
+		}
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
 }
