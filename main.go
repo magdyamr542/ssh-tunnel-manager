@@ -16,6 +16,13 @@ func main() {
 		Name:        "ssh-tool-manager",
 		Usage:       "An SSH tunnel manager tool",
 		Description: "Save SSH tunnel configurations and start a tunnel using one of the saved configurations.",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  add.ConfigDirFlagName,
+				Usage: "Path to a directory where the configurations are saved",
+				Value: "~/.ssh-tunnel-manager",
+			},
+		},
 		Commands: []*cli.Command{
 			&list.Cmd,
 			&add.Cmd,

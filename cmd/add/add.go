@@ -1,10 +1,12 @@
 package add
 
 import (
-	"fmt"
-
+	"github.com/magdyamr542/ssh-tunnel-manager/configmanager"
+	"github.com/magdyamr542/ssh-tunnel-manager/utils"
 	"github.com/urfave/cli/v2"
 )
+
+const ConfigDirFlagName = "config-dir"
 
 var Cmd cli.Command = cli.Command{
 	Name:  "add",
@@ -52,7 +54,20 @@ var Cmd cli.Command = cli.Command{
 		},
 	},
 	Action: func(cCtx *cli.Context) error {
-		fmt.Println("adding a configuration: ", cCtx.Args().First())
-		return nil
+		configdir, err := utils.ResolveDir(cCtx.String(ConfigDirFlagName))
+		if err != nil {
+			return err
+		}
+		e := configmanager.Entry{
+			Name:        cCtx.String("name"),
+			Description: cCtx.String("description"),
+			Server:      cCtx.String("server"),
+			User:        cCtx.String("user"),
+			KeyFile:     cCtx.String("keyFile"),
+			LocalPort:   cCtx.Int("localPort"),
+			RemoteHost:  cCtx.String("remoteHost"),
+			RemotePort:  cCtx.Int("remotePort"),
+		}
+		return configmanager.NewManager(configdir).AddConfiguration(e)
 	},
 }
