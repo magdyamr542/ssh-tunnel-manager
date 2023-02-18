@@ -117,6 +117,7 @@ func startTunneling(entry configmanager.Entry) error {
 			remoteConn, err := client.Dial("tcp", remoteAddress)
 			if err != nil {
 				log.Printf("error dialing remote address %s: %v\n", remoteAddress, err)
+				localConn.Close()
 				return
 			}
 
