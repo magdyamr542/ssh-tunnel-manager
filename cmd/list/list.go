@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/magdyamr542/ssh-tunnel-manager/cmd/add"
 	"github.com/magdyamr542/ssh-tunnel-manager/configmanager"
@@ -14,7 +15,7 @@ import (
 var Cmd cli.Command = cli.Command{
 	Name:    "list",
 	Aliases: []string{"l", "ls"},
-	Usage:   "List all configurations",
+	Usage:   "List configurations",
 	Action: func(cCtx *cli.Context) error {
 		configdir, err := utils.ResolveDir(cCtx.String(add.ConfigDirFlagName))
 		if err != nil {
@@ -22,7 +23,7 @@ var Cmd cli.Command = cli.Command{
 		}
 		cfgs, err := configmanager.NewManager(configdir).GetConfigurations()
 		if err != nil {
-			return fmt.Errorf("couln't get saved configurations: %v", err)
+			return fmt.Errorf("couldn't get saved configurations: %v", err)
 		}
 
 		if len(cfgs) == 0 {
@@ -40,16 +41,20 @@ var Cmd cli.Command = cli.Command{
 }
 
 func printConfig(w io.Writer, entry configmanager.Entry) {
-	template := `%s (%s)
+	template := `%s
   - SSH server:  %s
   - Private key: %s
   - Remote:      %s:%d
   - Local:       localhost:%d
 `
+	nameAndDesc := entry.Name
+	if strings.TrimSpace(entry.Description) != "" {
+		nameAndDesc += " " + "(" + nameAndDesc + ")"
+	}
 	w.Write([]byte(
 		fmt.Sprintf(
 			template,
-			entry.Name, entry.Description,
+			nameAndDesc,
 			entry.Server,
 			entry.KeyFile,
 			entry.RemoteHost,

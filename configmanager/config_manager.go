@@ -65,7 +65,7 @@ func (m *manager) GetConfigurations() ([]Entry, error) {
 	entries := make([]Entry, 0)
 	files, err := ioutil.ReadDir(m.dir)
 	if err != nil {
-		return entries, fmt.Errorf("couln't read directory %s: %v", m.dir, err)
+		return entries, fmt.Errorf("couldn't read directory %s: %v", m.dir, err)
 	}
 
 	for _, file := range files {
@@ -75,12 +75,12 @@ func (m *manager) GetConfigurations() ([]Entry, error) {
 
 		byteValue, err := ioutil.ReadFile(filepath.Join(m.dir, file.Name()))
 		if err != nil {
-			return entries, fmt.Errorf("couln't read file %s: %v", file.Name(), err)
+			return entries, fmt.Errorf("couldn't read file %s: %v", file.Name(), err)
 		}
 
 		var entry Entry
 		if err := json.Unmarshal(byteValue, &entry); err != nil {
-			return []Entry{}, fmt.Errorf("couln't parse JSON file %s: %v", file.Name(), err)
+			return []Entry{}, fmt.Errorf("couldn't parse JSON file %s: %v", file.Name(), err)
 		}
 		entries = append(entries, entry)
 	}

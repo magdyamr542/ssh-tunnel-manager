@@ -10,27 +10,26 @@ import (
 )
 
 var Cmd cli.Command = cli.Command{
-	Name:    "remove",
-	Usage:   "Remove a configuration",
-	Aliases: []string{"rm"},
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "name",
-			Value:    "",
-			Usage:    "Name of the configuration to remove",
-			Required: true,
-		},
-	},
+	Name:      "remove",
+	Usage:     "Remove a configuration",
+	Aliases:   []string{"rm"},
+	UsageText: "ssh-tunnel-manager remove <configuration name>",
 	Action: func(cCtx *cli.Context) error {
+		entryName := cCtx.Args().First()
+		if entryName == "" {
+			return fmt.Errorf("<configuration name> needed but not provided")
+		}
+
 		configdir, err := utils.ResolveDir(cCtx.String(add.ConfigDirFlagName))
 		if err != nil {
 			return err
 		}
-		entryName := cCtx.String("name")
+
 		err = configmanager.NewManager(configdir).RemoveConfiguration(entryName)
 		if err != nil {
-			return fmt.Errorf("couln't remove configuration %s: %v", entryName, err)
+			return fmt.Errorf("couldn't remove configuration %s: %v", entryName, err)
 		}
+
 		return nil
 	},
 }

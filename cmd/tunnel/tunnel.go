@@ -18,28 +18,28 @@ import (
 
 var Cmd cli.Command = cli.Command{
 
-	Name:  "tunnel",
-	Usage: "Start a tunnel using a configuration",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "name",
-			Value:    "",
-			Usage:    "Name of the configuration to use",
-			Required: true,
-		},
-	},
+	Name:      "tunnel",
+	Usage:     "Start a tunnel using a configuration",
+	UsageText: "ssh-tunnel-manager tunnel <configuration name>",
+	ArgsUsage: "<configuration name>",
 	Action: func(cCtx *cli.Context) error {
+
+		entryName := cCtx.Args().First()
+		if entryName == "" {
+			return fmt.Errorf("<configuration name> needed but not provided")
+		}
+
 		configdir, err := utils.ResolveDir(cCtx.String(add.ConfigDirFlagName))
 		if err != nil {
 			return err
 		}
-		entryName := cCtx.String("name")
+
 		cfg, err := configmanager.NewManager(configdir).GetConfiguration(entryName)
 		if err != nil {
 			return fmt.Errorf("couldn't get configuration %q: %v", entryName, err)
 		}
-		return startTunneling(cfg)
 
+		return startTunneling(cfg)
 	},
 }
 

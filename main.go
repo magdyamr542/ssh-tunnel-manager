@@ -13,13 +13,13 @@ import (
 
 func main() {
 	app := &cli.App{
-		Name:        "ssh-tool-manager",
-		Usage:       "An SSH tunnel manager tool",
-		Description: "Save SSH tunnel configurations and start a tunnel using one of the saved configurations.",
+		Name:        "ssh-tunnel-manager",
+		Usage:       "An SSH tunnel manager.",
+		Description: "Save SSH tunnel configurations and start a tunnel with port forwarding using one of the saved configurations.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  add.ConfigDirFlagName,
-				Usage: "Path to a directory where the configurations are saved",
+				Usage: "Path to a directory where configurations are saved",
 				Value: "~/.ssh-tunnel-manager",
 			},
 		},
