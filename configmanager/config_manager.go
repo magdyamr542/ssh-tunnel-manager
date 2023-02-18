@@ -41,7 +41,6 @@ func NewManager(dir string) *manager {
 }
 
 func (m *manager) GetConfiguration(entryName string) (Entry, error) { return Entry{}, nil }
-func (m *manager) RemoveConfiguration(entryName string) error       { return nil }
 
 func (m *manager) AddConfiguration(entry Entry) error {
 	if _, err := os.Stat(m.dir); errors.Is(err, os.ErrNotExist) {
@@ -89,4 +88,8 @@ func (m *manager) GetConfigurations() ([]Entry, error) {
 	}
 
 	return entries, nil
+}
+
+func (m *manager) RemoveConfiguration(entryName string) error {
+	return os.Remove(filepath.Join(m.dir, entryName+".json"))
 }
