@@ -2,8 +2,18 @@ package tunnel
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net"
+	"os"
+	"os/signal"
 
+	"github.com/magdyamr542/ssh-tunnel-manager/cmd/add"
+	"github.com/magdyamr542/ssh-tunnel-manager/configmanager"
+	"github.com/magdyamr542/ssh-tunnel-manager/utils"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/crypto/ssh"
 )
 
 var Cmd cli.Command = cli.Command{
@@ -19,8 +29,130 @@ var Cmd cli.Command = cli.Command{
 		},
 	},
 	Action: func(cCtx *cli.Context) error {
-		configName := cCtx.String("name")
-		fmt.Printf("tunneling configuration %s", configName)
-		return nil
+		configdir, err := utils.ResolveDir(cCtx.String(add.ConfigDirFlagName))
+		if err != nil {
+			return err
+		}
+		entryName := cCtx.String("name")
+		cfg, err := configmanager.NewManager(configdir).GetConfiguration(entryName)
+		if err != nil {
+			return fmt.Errorf("couldn't get configuration %q: %v", entryName, err)
+		}
+		return startTunneling(cfg)
+
 	},
+}
+
+func startTunneling(entry configmanager.Entry) error {
+	// The SSH server to connect to
+	sshServer := entry.Server
+	// The username to use when connecting
+	sshUser := entry.User
+	// The private key file to use for authentication
+	keyFile := entry.KeyFile
+	// The local port to listen on
+	localPort := entry.LocalPort
+	// The remote host and port to forward traffic to
+	remoteAddress := fmt.Sprintf("%s:%d", entry.RemoteHost, entry.RemotePort)
+	localAddress := fmt.Sprintf("%s:%d", "localhost", entry.LocalPort)
+
+	// Load the private key file
+	privateKey, err := readPrivateKeyFile(keyFile)
+	if err != nil {
+		return err
+	}
+
+	key, err := ssh.ParsePrivateKey(privateKey)
+	if err != nil {
+		return fmt.Errorf("couldn't parse private key %q: %v", keyFile, err)
+	}
+
+	// Set up the SSH client config
+	config := &ssh.ClientConfig{
+		User: sshUser,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(key),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	// Connect to the SSH server
+	client, err := ssh.Dial("tcp", sshServer+":22", config)
+	if err != nil {
+		return fmt.Errorf("couldn't connect to SSH server %q: %v", sshServer, err)
+	}
+
+	// Set up the local listener
+	localListener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", localPort))
+	if err != nil {
+		return fmt.Errorf("couldn't set up local listener: %v", err)
+	}
+
+	// Handle server shutdown
+	stopper := make(chan os.Signal)
+	signal.Notify(stopper, os.Kill, os.Interrupt)
+	go func(stopper <-chan os.Signal) {
+		<-stopper
+		log.Printf("Stopping the tunnel server. Closing any existing connections...\n")
+		code := 0
+		if err := client.Close(); err != nil {
+			log.Printf("error while stopping the tunnel server: %v", err)
+			code = 1
+		}
+		os.Exit(code)
+	}(stopper)
+
+	// Start accepting connections on the local listener
+	log.Printf("Tunneling %q <==> %q\n", localAddress, remoteAddress)
+	for {
+		localConn, err := localListener.Accept()
+		if err != nil {
+			return fmt.Errorf("error accepting new connection: %v", err)
+		}
+
+		log.Printf("Got new connection: %s\n", localConn.RemoteAddr())
+
+		// Start the SSH tunnel for each incoming connection
+		go func(localConn net.Conn) {
+			remoteConn, err := client.Dial("tcp", remoteAddress)
+			if err != nil {
+				log.Printf("error dialing remote address %s: %v\n", remoteAddress, err)
+				return
+			}
+
+			go runTunnel(localConn, remoteConn)
+		}(localConn)
+	}
+}
+
+// Helper function to read the private key file
+func readPrivateKeyFile(file string) ([]byte, error) {
+	data, err := ioutil.ReadFile(file)
+	if err != nil {
+		return []byte{}, fmt.Errorf("couldn't read private key file %s: %v", file, err)
+	}
+	return data, nil
+}
+
+// runTunnel runs a tunnel between two connections; as soon as one connection
+// reaches EOF or reports an error, both connections are closed and this
+// function returns.
+func runTunnel(local, remote net.Conn) {
+	// Clean up
+	defer local.Close()
+	defer remote.Close()
+
+	done := make(chan struct{}, 2)
+	go func() {
+		io.Copy(local, remote)
+		done <- struct{}{}
+	}()
+
+	go func() {
+		io.Copy(remote, local)
+		done <- struct{}{}
+	}()
+
+	<-done
+	log.Printf("Connection closed: %s\n", local.RemoteAddr())
 }

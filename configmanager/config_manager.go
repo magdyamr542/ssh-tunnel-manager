@@ -40,8 +40,6 @@ func NewManager(dir string) *manager {
 	return &manager{dir: dir}
 }
 
-func (m *manager) GetConfiguration(entryName string) (Entry, error) { return Entry{}, nil }
-
 func (m *manager) AddConfiguration(entry Entry) error {
 	if _, err := os.Stat(m.dir); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(m.dir, os.ModePerm)
@@ -92,4 +90,18 @@ func (m *manager) GetConfigurations() ([]Entry, error) {
 
 func (m *manager) RemoveConfiguration(entryName string) error {
 	return os.Remove(filepath.Join(m.dir, entryName+".json"))
+}
+
+func (m *manager) GetConfiguration(entryName string) (Entry, error) {
+	filename := filepath.Join(m.dir, entryName+".json")
+	byteValue, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return Entry{}, fmt.Errorf("couldn't read file %q: %v", filename, err)
+	}
+
+	var entry Entry
+	if err := json.Unmarshal(byteValue, &entry); err != nil {
+		return Entry{}, fmt.Errorf("couldn't parse JSON file %q: %v", filename, err)
+	}
+	return entry, nil
 }
