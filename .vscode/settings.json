@@ -1,0 +1,6 @@
+{
+  "search.exclude": {
+    "/home/amr/go/*/**": true,
+    "/home/amr/.gvm/*/**": true
+  }
+}
