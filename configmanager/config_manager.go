@@ -17,7 +17,6 @@ type Entry struct {
 	Server      string
 	User        string
 	KeyFile     string
-	LocalPort   int
 	RemoteHost  string
 	RemotePort  int
 }

@@ -45,7 +45,6 @@ func printConfig(w io.Writer, entry configmanager.Entry) {
   - SSH server:  %s
   - Private key: %s
   - Remote:      %s:%d
-  - Local:       localhost:%d
 `
 	nameAndDesc := entry.Name
 	if strings.TrimSpace(entry.Description) != "" {
@@ -59,6 +58,5 @@ func printConfig(w io.Writer, entry configmanager.Entry) {
 			entry.KeyFile,
 			entry.RemoteHost,
 			entry.RemotePort,
-			entry.LocalPort,
 		)))
 }

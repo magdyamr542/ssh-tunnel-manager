@@ -36,12 +36,6 @@ var Cmd cli.Command = cli.Command{
 			Usage:    "Path to the private key file for SSH authentication",
 			Required: true,
 		},
-		&cli.IntFlag{
-			Name:     "localPort",
-			Usage:    "The localport to listen on",
-			Required: true,
-			Value:    1234,
-		},
 		&cli.StringFlag{
 			Name:     "remoteHost",
 			Usage:    "The remote host to forward traffic to",
@@ -64,7 +58,6 @@ var Cmd cli.Command = cli.Command{
 			Server:      cCtx.String("server"),
 			User:        cCtx.String("user"),
 			KeyFile:     cCtx.String("keyFile"),
-			LocalPort:   cCtx.Int("localPort"),
 			RemoteHost:  cCtx.String("remoteHost"),
 			RemotePort:  cCtx.Int("remotePort"),
 		}

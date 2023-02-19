@@ -3,11 +3,12 @@ package tunnel
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
+	"syscall"
 
 	"github.com/magdyamr542/ssh-tunnel-manager/cmd/add"
 	"github.com/magdyamr542/ssh-tunnel-manager/configmanager"
@@ -19,14 +20,32 @@ import (
 var Cmd cli.Command = cli.Command{
 
 	Name:      "tunnel",
-	Usage:     "Start a tunnel using a configuration",
-	UsageText: "ssh-tunnel-manager tunnel <configuration name>",
+	Usage:     "Start a tunnel using a configuration. The tunnel will forward connections to [local port] if specified or to a random port.",
+	UsageText: "ssh-tunnel-manager tunnel <configuration name> [local port]",
 	ArgsUsage: "<configuration name>",
 	Action: func(cCtx *cli.Context) error {
 
 		entryName := cCtx.Args().First()
 		if entryName == "" {
 			return fmt.Errorf("<configuration name> needed but not provided")
+		}
+
+		localPortStr := cCtx.Args().Get(1)
+		var localPort int
+		if localPortStr == "" {
+			// Generate random port
+			randomPort, err := generateRandomPort()
+			if err != nil {
+				return fmt.Errorf("couldn't generate a random port: %v", err)
+			}
+			localPort = randomPort
+		} else {
+			// Parse given port
+			localPortInt, err := strconv.Atoi(localPortStr)
+			if err != nil {
+				return fmt.Errorf("provided local port %q is not a valid port", localPortStr)
+			}
+			localPort = localPortInt
 		}
 
 		configdir, err := utils.ResolveDir(cCtx.String(add.ConfigDirFlagName))
@@ -39,22 +58,20 @@ var Cmd cli.Command = cli.Command{
 			return fmt.Errorf("couldn't get configuration %q: %v", entryName, err)
 		}
 
-		return startTunneling(cfg)
+		return startTunneling(cfg, localPort)
 	},
 }
 
-func startTunneling(entry configmanager.Entry) error {
+func startTunneling(entry configmanager.Entry, localPort int) error {
 	// The SSH server to connect to
 	sshServer := entry.Server
 	// The username to use when connecting
 	sshUser := entry.User
 	// The private key file to use for authentication
 	keyFile := entry.KeyFile
-	// The local port to listen on
-	localPort := entry.LocalPort
 	// The remote host and port to forward traffic to
 	remoteAddress := fmt.Sprintf("%s:%d", entry.RemoteHost, entry.RemotePort)
-	localAddress := fmt.Sprintf("%s:%d", "localhost", entry.LocalPort)
+	localAddress := fmt.Sprintf("%s:%d", "localhost", localPort)
 
 	// Load the private key file
 	privateKey, err := readPrivateKeyFile(keyFile)
@@ -89,8 +106,8 @@ func startTunneling(entry configmanager.Entry) error {
 	}
 
 	// Handle server shutdown
-	stopper := make(chan os.Signal)
-	signal.Notify(stopper, os.Kill, os.Interrupt)
+	stopper := make(chan os.Signal, 1)
+	signal.Notify(stopper, syscall.SIGTERM, os.Interrupt)
 	go func(stopper <-chan os.Signal) {
 		<-stopper
 		log.Printf("Stopping the tunnel server. Closing any existing connections...\n")
@@ -128,7 +145,7 @@ func startTunneling(entry configmanager.Entry) error {
 
 // Helper function to read the private key file
 func readPrivateKeyFile(file string) ([]byte, error) {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return []byte{}, fmt.Errorf("couldn't read private key file %s: %v", file, err)
 	}
@@ -156,4 +173,32 @@ func runTunnel(local, remote net.Conn) {
 
 	<-done
 	log.Printf("Connection closed: %s\n", local.RemoteAddr())
+}
+
+func generateRandomPort() (int, error) {
+	// Listen on port 0 to bind to a random available port
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+
+	// Extract the port number from the listener address
+	_, port, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		return 0, err
+	}
+
+	// Convert the port number to an integer
+	randomPort, err := net.LookupPort("tcp", port)
+	if err != nil {
+		return 0, err
+	}
+
+	// Close the listener
+	err = listener.Close()
+	if err != nil {
+		return 0, err
+	}
+
+	return randomPort, nil
 }
