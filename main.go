@@ -14,7 +14,7 @@ import (
 func main() {
 	app := &cli.App{
 		Name:        "ssh-tunnel-manager",
-		Usage:       "An SSH tunnel manager.",
+		Usage:       "An SSH tunnel manager tool with port forwarding capability.",
 		Description: "Save SSH tunnel configurations and start a tunnel with port forwarding using one of the saved configurations.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
