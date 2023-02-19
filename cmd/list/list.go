@@ -49,7 +49,7 @@ func printConfig(w io.Writer, entry configmanager.Entry) {
 `
 	nameAndDesc := entry.Name
 	if strings.TrimSpace(entry.Description) != "" {
-		nameAndDesc += " " + "(" + nameAndDesc + ")"
+		nameAndDesc += " " + "(" + entry.Description + ")"
 	}
 	w.Write([]byte(
 		fmt.Sprintf(
