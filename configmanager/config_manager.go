@@ -36,17 +36,24 @@ type manager struct {
 }
 
 func NewManager(dir string) *manager {
-
-	return &manager{dir: dir}
+	m := &manager{dir: dir}
+	if err := m.ensurePersistenceDirExists(); err != nil {
+		panic(err)
+	}
+	return m
 }
 
-func (m *manager) AddConfiguration(entry Entry) error {
+func (m *manager) ensurePersistenceDirExists() error {
 	if _, err := os.Stat(m.dir); errors.Is(err, os.ErrNotExist) {
 		err := os.Mkdir(m.dir, os.ModePerm)
 		if err != nil {
 			return fmt.Errorf("couldn't create directory %s: %v", m.dir, err)
 		}
 	}
+	return nil
+}
+
+func (m *manager) AddConfiguration(entry Entry) error {
 
 	file, err := json.MarshalIndent(entry, "", " ")
 	if err != nil {
