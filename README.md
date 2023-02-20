@@ -1,5 +1,5 @@
 ## SSH tunnel manager
-Save SSH tunnel configurations and start a tunnel using one of the saved configurations.
+Save SSH tunnel configurations and start a tunnel with port forwarding using one of the saved configurations.
 
 ## Features
 - Save an SSH tunnel configuration with a description
@@ -12,3 +12,34 @@ Save SSH tunnel configurations and start a tunnel using one of the saved configu
 
 ## Usage
 Run `ssh-tunnel-manager`
+
+## Example
+- Adding a configuration for a tunnel to a development cluster
+    ```
+    ssh-tunnel-manager add \
+    --name my-dev-tunnel \
+    --description "A tunnel to access the db in dev cluster" \
+    --server my-ssh.server.com \
+    --user me \
+    --keyFile ~/.ssh/key \
+    --remoteHost my-db.remote.com \
+    --remotePort 5432
+    ```
+- Listing the configurations
+    ```
+    ssh-tunnel-manager list
+
+    # output
+    my-dev-tunnel (A tunnel to access the db in dev cluster)
+      - SSH server:  my-ssh.server.com 
+      - User:        me
+      - Private key: <your-.ssh-path>/key
+      - Remote:      my-db.remote.com:5432
+    ```
+- Start tunneling using a configuration. Now you can access your remote db from `localhost:1234`
+    ```
+    ssh-tunnel-manager tunnel my-dev-tunnel 1234
+
+    # output
+    2023/02/20 09:19:32 Tunneling "localhost:1234" <==> "my-db.remote.com:5432"
+    ```

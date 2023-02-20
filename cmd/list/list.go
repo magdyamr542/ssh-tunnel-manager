@@ -43,6 +43,7 @@ var Cmd cli.Command = cli.Command{
 func printConfig(w io.Writer, entry configmanager.Entry) {
 	template := `%s
   - SSH server:  %s
+  - User:        %s
   - Private key: %s
   - Remote:      %s:%d
 `
@@ -55,6 +56,7 @@ func printConfig(w io.Writer, entry configmanager.Entry) {
 			template,
 			nameAndDesc,
 			entry.Server,
+			entry.User,
 			entry.KeyFile,
 			entry.RemoteHost,
 			entry.RemotePort,
