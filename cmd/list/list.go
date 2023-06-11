@@ -9,35 +9,71 @@ import (
 	"github.com/magdyamr542/ssh-tunnel-manager/cmd/add"
 	"github.com/magdyamr542/ssh-tunnel-manager/configmanager"
 	"github.com/magdyamr542/ssh-tunnel-manager/utils"
+	"github.com/posener/complete/v2"
 	"github.com/urfave/cli/v2"
 )
+
+var Predictor complete.Predictor = complete.PredictFunc(predictConfigurations)
 
 var Cmd cli.Command = cli.Command{
 	Name:    "list",
 	Aliases: []string{"l", "ls"},
 	Usage:   "List configurations",
 	Action: func(cCtx *cli.Context) error {
-		configdir, err := utils.ResolveDir(cCtx.String(add.ConfigDirFlagName))
+		cfgs, err := getConfigs()
 		if err != nil {
 			return err
 		}
-		cfgs, err := configmanager.NewManager(configdir).GetConfigurations()
-		if err != nil {
-			return fmt.Errorf("couldn't get saved configurations: %v", err)
-		}
+
+		output := os.Stdout
 
 		if len(cfgs) == 0 {
-			fmt.Println("No configurations found")
+			fmt.Fprintf(output, "No configurations found\n")
 			return nil
 		}
 		for i, cfg := range cfgs {
-			printConfig(os.Stdout, cfg)
+			printConfig(output, cfg)
 			if i != len(cfgs)-1 {
-				fmt.Println("")
+				fmt.Fprintf(output, "")
 			}
 		}
 		return nil
 	},
+}
+
+func getConfigs() ([]configmanager.Entry, error) {
+	dirpath := configmanager.DefaultConfigDir
+	if value := os.Getenv(add.ConfigDirFlagName); value != "" {
+		dirpath = value
+	}
+
+	configdir, err := utils.ResolveDir(dirpath)
+	if err != nil {
+		return nil, err
+	}
+
+	cfgs, err := configmanager.NewManager(configdir).GetConfigurations()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get saved configurations: %v", err)
+	}
+
+	if len(cfgs) == 0 {
+		return nil, nil
+	}
+
+	return cfgs, nil
+}
+
+func predictConfigurations(prefix string) []string {
+	cfgs, err := getConfigs()
+	if err != nil {
+		return nil
+	}
+	configs := make([]string, len(cfgs))
+	for _, cfg := range cfgs {
+		configs = append(configs, cfg.Name)
+	}
+	return configs
 }
 
 func printConfig(w io.Writer, entry configmanager.Entry) {

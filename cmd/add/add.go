@@ -1,8 +1,13 @@
 package add
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/magdyamr542/ssh-tunnel-manager/configmanager"
 	"github.com/magdyamr542/ssh-tunnel-manager/utils"
+	"github.com/posener/complete/v2"
+	"github.com/posener/complete/v2/predict"
 	"github.com/urfave/cli/v2"
 )
 
@@ -63,4 +68,34 @@ var Cmd cli.Command = cli.Command{
 		}
 		return configmanager.NewManager(configdir).AddConfiguration(e)
 	},
+}
+
+var FlagsPredictor = map[string]complete.Predictor{
+	"name":        predict.Nothing,
+	"description": predict.Nothing,
+	"server":      predict.Nothing,
+	"user":        predict.Nothing,
+	"keyFile":     complete.PredictFunc(getKeyFiles),
+	"remoteHost":  predict.Nothing,
+	"remotePort":  predict.Nothing,
+}
+
+func getKeyFiles(prefix string) []string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil
+	}
+
+	entries, err := os.ReadDir(filepath.Join(home, ".ssh"))
+	if err != nil {
+		return nil
+	}
+
+	files := []string{}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			files = append(files, filepath.Join(home, ".ssh", entry.Name()))
+		}
+	}
+	return files
 }

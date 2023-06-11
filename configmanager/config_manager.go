@@ -10,6 +10,9 @@ import (
 	"strings"
 )
 
+// DefaultConfigDir is the default directory where configurations are saved
+const DefaultConfigDir = "~/.ssh-tunnel-manager"
+
 // Entry is an SSH configuration entry
 type Entry struct {
 	Name        string
