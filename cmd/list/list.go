@@ -34,7 +34,7 @@ var Cmd cli.Command = cli.Command{
 		for i, cfg := range cfgs {
 			printConfig(output, cfg)
 			if i != len(cfgs)-1 {
-				fmt.Fprintf(output, "")
+				fmt.Fprintf(output, "\n")
 			}
 		}
 		return nil
