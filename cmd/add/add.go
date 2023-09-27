@@ -27,8 +27,9 @@ var Cmd cli.Command = cli.Command{
 			Usage: "Short description of the configuration (optional)",
 		},
 		&cli.StringFlag{
-			Name:     "server",
-			Usage:    "Name of the SSH server to connect to",
+			Name: "server",
+			Usage: "Address of the SSH server to connect to. Can contain the port. " +
+				"If not, port 22 will be used by default",
 			Required: true,
 		},
 		&cli.StringFlag{

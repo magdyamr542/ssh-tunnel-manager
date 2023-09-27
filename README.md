@@ -50,5 +50,8 @@ Run `ssh-tunnel-manager install-autocomplete` to enable auto completion.
   ssh-tunnel-manager tunnel my-dev-tunnel 1234
 
   # output
-  2023/02/20 09:19:32 Tunneling "localhost:1234" <==> "my-db.remote.com:5432"
+  2023/02/20 09:19:32 SSH server "my-ssh.server.com" specifies no port. Will use 22
+  2023/02/20 09:19:33 Connecting to "my-ssh.server.com:22" with a timeout of 8s
+  2023/02/20 09:19:34 Connected
+  2023/02/20 09:19:35 Tunneling "localhost:1234" <==> "my-db.remote.com:5432" through "my-ssh.server.com:22"
   ```

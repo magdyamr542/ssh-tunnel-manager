@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -8,13 +9,19 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/magdyamr542/ssh-tunnel-manager/cmd/add"
 	"github.com/magdyamr542/ssh-tunnel-manager/configmanager"
 	"github.com/magdyamr542/ssh-tunnel-manager/utils"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/crypto/ssh"
+)
+
+const (
+	DefaultSSHPort = "22"
 )
 
 var Cmd cli.Command = cli.Command{
@@ -63,7 +70,7 @@ var Cmd cli.Command = cli.Command{
 }
 
 func startTunneling(entry configmanager.Entry, localPort int) error {
-	// The SSH server to connect to
+	// The SSH server to connect to. The address can contain a port.
 	sshServer := entry.Server
 	// The username to use when connecting
 	sshUser := entry.User
@@ -72,6 +79,24 @@ func startTunneling(entry configmanager.Entry, localPort int) error {
 	// The remote host and port to forward traffic to
 	remoteAddress := fmt.Sprintf("%s:%d", entry.RemoteHost, entry.RemotePort)
 	localAddress := fmt.Sprintf("%s:%d", "localhost", localPort)
+
+	// Check if the ssh server address specifies a port. And use 22 if not.
+	_, _, err := net.SplitHostPort(sshServer)
+	if err != nil {
+		var addrErr *net.AddrError
+		if errors.As(err, &addrErr) {
+			hasPort := strings.LastIndex(sshServer, ":") != -1
+			if hasPort {
+				return fmt.Errorf("bad ssh server address: %v", err)
+			} else {
+				log.Printf("SSH server %q specifies no port. Will use %s\n", sshServer, DefaultSSHPort)
+				// Use 22 as a default ssh port.
+				sshServer = sshServer + ":" + DefaultSSHPort
+			}
+		} else {
+			return err
+		}
+	}
 
 	// Load the private key file
 	privateKey, err := readPrivateKeyFile(keyFile)
@@ -85,19 +110,23 @@ func startTunneling(entry configmanager.Entry, localPort int) error {
 	}
 
 	// Set up the SSH client config
+	timeout := 8 * time.Second
 	config := &ssh.ClientConfig{
 		User: sshUser,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(key),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         timeout,
 	}
 
 	// Connect to the SSH server
-	client, err := ssh.Dial("tcp", sshServer+":22", config)
+	log.Printf("Connecting to %q with a timeout of %s", sshServer, timeout)
+	client, err := ssh.Dial("tcp", sshServer, config)
 	if err != nil {
 		return fmt.Errorf("couldn't connect to SSH server %q: %v", sshServer, err)
 	}
+	log.Printf("Connected\n")
 
 	// Set up the local listener
 	localListener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", localPort))
@@ -120,7 +149,7 @@ func startTunneling(entry configmanager.Entry, localPort int) error {
 	}(stopper)
 
 	// Start accepting connections on the local listener
-	log.Printf("Tunneling %q <==> %q\n", localAddress, remoteAddress)
+	log.Printf("Tunneling %q <==> %q through %q\n", localAddress, remoteAddress, sshServer)
 	for {
 		localConn, err := localListener.Accept()
 		if err != nil {
