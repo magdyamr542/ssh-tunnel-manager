@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/lithammer/fuzzysearch/fuzzy"
+
 	"github.com/magdyamr542/ssh-tunnel-manager/cmd/add"
 	"github.com/magdyamr542/ssh-tunnel-manager/configmanager"
 	"github.com/magdyamr542/ssh-tunnel-manager/utils"
@@ -18,7 +20,10 @@ var Predictor complete.Predictor = complete.PredictFunc(predictConfigurations)
 var Cmd cli.Command = cli.Command{
 	Name:    "list",
 	Aliases: []string{"l", "ls"},
-	Usage:   "List configurations",
+	Usage:   "List configurations (You can use a pattern to only list the configurations that fuzzy match that pattern)",
+	Description: `When using it like this "ssh-tunnel-manager list prod" it will only list configurations
+that fuzzy match the word "prod". If you have these configurations (client-prod, client1-stage, otherclient-prod), 
+only (client-prod, otherclient-prod) will be displayed.`,
 	Action: func(cCtx *cli.Context) error {
 		cfgs, err := getConfigs()
 		if err != nil {
@@ -31,7 +36,15 @@ var Cmd cli.Command = cli.Command{
 			fmt.Fprintf(output, "No configurations found\n")
 			return nil
 		}
+
+		// The user can filter for certain entries using Fuzzy matching.
+		entryPattern := cCtx.Args().First()
+
 		for i, cfg := range cfgs {
+			if entryPattern != "" && !fuzzy.Match(strings.ToLower(entryPattern), strings.ToLower(cfg.Name)) {
+				continue
+			}
+
 			printConfig(output, cfg)
 			if i != len(cfgs)-1 {
 				fmt.Fprintf(output, "\n")
