@@ -24,6 +24,7 @@ var Cmd cli.Command = cli.Command{
 	Description: `When using it like this "ssh-tunnel-manager list prod" it will only list configurations
 that fuzzy match the word "prod". If you have these configurations (client-prod, client1-stage, otherclient-prod), 
 only (client-prod, otherclient-prod) will be displayed.`,
+
 	Action: func(cCtx *cli.Context) error {
 		cfgs, err := getConfigs()
 		if err != nil {
@@ -40,19 +41,23 @@ only (client-prod, otherclient-prod) will be displayed.`,
 		// The user can filter for certain entries using Fuzzy matching.
 		entryPattern := cCtx.Args().First()
 
-		for i, cfg := range cfgs {
+		if entryPattern != "" {
+			cfgs = configmanager.Entries(cfgs).Filter(func(c *configmanager.Entry) bool {
+				return fuzzy.Match(strings.ToLower(entryPattern), strings.ToLower(c.Name))
+			})
+		}
 
-			if entryPattern != "" && !fuzzy.Match(strings.ToLower(entryPattern), strings.ToLower(cfg.Name)) {
-				continue
-			}
+		for i := range cfgs {
 
 			if i != 0 {
-				fmt.Fprintf(output, "\n\n")
+				fmt.Fprintf(output, "\n")
 			}
 
-			printConfig(output, cfg)
-
+			// config is prented without a new line at its end.
+			printConfig(output, cfgs[i])
+			fmt.Fprintf(output, "\n")
 		}
+
 		return nil
 	},
 }

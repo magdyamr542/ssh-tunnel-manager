@@ -26,6 +26,21 @@ type Entry struct {
 	RemotePort  int
 }
 
+type Entries []Entry
+
+func (e Entries) Filter(predicate func(*Entry) bool) Entries {
+	newEntries := make([]Entry, 0)
+
+	for _, entry := range e {
+		entry := entry
+		if predicate(&entry) {
+			newEntries = append(newEntries, entry)
+		}
+	}
+
+	return newEntries
+}
+
 func (e *Entry) Validate() error {
 	errors := make([]string, 0)
 	var errorIfNotValid = func(value interface{}, key string) {
