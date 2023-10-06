@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/magdyamr542/ssh-tunnel-manager/editor"
 )
 
 // DefaultConfigDir is the default directory where configurations are saved
@@ -24,12 +26,39 @@ type Entry struct {
 	RemotePort  int
 }
 
+func (e *Entry) Validate() error {
+	errors := make([]string, 0)
+	var errorIfNotValid = func(value interface{}, key string) {
+		if valStr, ok := value.(string); ok && valStr == "" {
+			errors = append(errors, key+" is required.")
+		}
+
+		if valInt, ok := value.(int); ok && valInt == 0 {
+			errors = append(errors, key+" is required.")
+		}
+	}
+
+	errorIfNotValid(e.Name, "Name")
+	errorIfNotValid(e.Server, "Server")
+	errorIfNotValid(e.User, "User")
+	errorIfNotValid(e.KeyFile, "KeyFile")
+	errorIfNotValid(e.RemoteHost, "RemoteHost")
+	errorIfNotValid(e.RemotePort, "RemotePort")
+
+	if len(errors) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf("Entry is not valid. %s", strings.Join(errors, " "))
+}
+
 // ConfigManager manages SSH entries
 type ConfigManager interface {
 	GetConfiguration(entryName string) (Entry, error)
 	GetConfigurations() ([]Entry, error)
 	AddConfiguration(entry Entry) error
 	RemoveConfiguration(entryName string) error
+	EditConfiguration(entryName string, editor editor.Editor) error
 }
 
 type manager struct {
@@ -62,7 +91,7 @@ func (m *manager) AddConfiguration(entry Entry) error {
 		return fmt.Errorf("couldn't marshal entry %v to JSON: %v", entry, err)
 	}
 	filename := filepath.Join(m.dir, entry.Name+".json")
-	err = ioutil.WriteFile(filename, file, 0644)
+	err = os.WriteFile(filename, file, 0644)
 	if err != nil {
 		return fmt.Errorf("couldn't write file %s: %v", filename, err)
 	}
@@ -103,7 +132,7 @@ func (m *manager) RemoveConfiguration(entryName string) error {
 
 func (m *manager) GetConfiguration(entryName string) (Entry, error) {
 	filename := filepath.Join(m.dir, entryName+".json")
-	byteValue, err := ioutil.ReadFile(filename)
+	byteValue, err := os.ReadFile(filename)
 	if err != nil {
 		return Entry{}, fmt.Errorf("couldn't read file %q: %v", filename, err)
 	}
@@ -113,4 +142,36 @@ func (m *manager) GetConfiguration(entryName string) (Entry, error) {
 		return Entry{}, fmt.Errorf("couldn't parse JSON file %q: %v", filename, err)
 	}
 	return entry, nil
+}
+
+func (m *manager) EditConfiguration(entryName string, editor editor.Editor) error {
+	filename := filepath.Join(m.dir, entryName+".json")
+	byteValue, err := os.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("couldn't read file %q: %v", filename, err)
+	}
+
+	newContent, err := editor.Edit(byteValue)
+	if err != nil {
+		return err
+	}
+
+	var newEntry Entry
+	if err := json.Unmarshal(newContent, &newEntry); err != nil {
+		return fmt.Errorf("new content isn't a valid entry: %v", err)
+	}
+
+	if err := newEntry.Validate(); err != nil {
+		return err
+	}
+
+	if err := m.RemoveConfiguration(entryName); err != nil {
+		return fmt.Errorf("error removing the old configuration: %v", err)
+	}
+
+	if err := m.AddConfiguration(newEntry); err != nil {
+		return fmt.Errorf("error adding the new configuration: %v", err)
+	}
+
+	return nil
 }

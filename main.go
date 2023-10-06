@@ -6,6 +6,7 @@ import (
 
 	"github.com/magdyamr542/ssh-tunnel-manager/cmd/add"
 	"github.com/magdyamr542/ssh-tunnel-manager/cmd/autocomplete"
+	"github.com/magdyamr542/ssh-tunnel-manager/cmd/edit"
 	"github.com/magdyamr542/ssh-tunnel-manager/cmd/list"
 	"github.com/magdyamr542/ssh-tunnel-manager/cmd/remove"
 	"github.com/magdyamr542/ssh-tunnel-manager/cmd/tunnel"
@@ -32,6 +33,7 @@ func main() {
 			&list.Cmd,
 			&add.Cmd,
 			&remove.Cmd,
+			&edit.Cmd,
 			&tunnel.Cmd,
 			&autocomplete.Cmd,
 		},
@@ -43,6 +45,7 @@ func main() {
 			list.Cmd.Name:         {Args: list.Predictor},
 			add.Cmd.Name:          {Args: list.Predictor, Flags: add.FlagsPredictor},
 			remove.Cmd.Name:       {Args: list.Predictor},
+			edit.Cmd.Name:         {Args: list.Predictor},
 			tunnel.Cmd.Name:       {Args: list.Predictor},
 			autocomplete.Cmd.Name: {},
 		},
