@@ -41,14 +41,17 @@ only (client-prod, otherclient-prod) will be displayed.`,
 		entryPattern := cCtx.Args().First()
 
 		for i, cfg := range cfgs {
+
 			if entryPattern != "" && !fuzzy.Match(strings.ToLower(entryPattern), strings.ToLower(cfg.Name)) {
 				continue
 			}
 
-			printConfig(output, cfg)
-			if i != len(cfgs)-1 {
-				fmt.Fprintf(output, "\n")
+			if i != 0 {
+				fmt.Fprintf(output, "\n\n")
 			}
+
+			printConfig(output, cfg)
+
 		}
 		return nil
 	},
@@ -94,9 +97,8 @@ func printConfig(w io.Writer, entry configmanager.Entry) {
   - SSH server:  %s
   - User:        %s
   - Private key: %s
-  - Remote:      %s:%d
-`
-	nameAndDesc := entry.Name
+  - Remote:      %s:%d`
+	nameAndDesc := bold(entry.Name)
 	if strings.TrimSpace(entry.Description) != "" {
 		nameAndDesc += " " + "(" + entry.Description + ")"
 	}
@@ -110,4 +112,8 @@ func printConfig(w io.Writer, entry configmanager.Entry) {
 			entry.RemoteHost,
 			entry.RemotePort,
 		)))
+}
+
+func bold(str string) string {
+	return "\x1b[1m" + str + "\x1b[0m"
 }
